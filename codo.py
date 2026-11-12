@@ -12,10 +12,8 @@ N_divisiones_codo = 25  # divisiones circunferenciales
 
 nodos_codo, elementos_codo = FuncionesGeometria.Codo(D_codo, R_codo, angulo_codo, N_divisiones_codo)
 
-# conectividad como enteros y en orden perimetral
 elementos_codo_plot = elementos_codo.astype(int)[:, [0, 1, 3, 2]]
 
-# coordenadas de cada vértice de cada cara: (N_elementos, 4, 3)
 caras_codo = nodos_codo[elementos_codo_plot]
 
 fig = plt.figure(figsize=(8, 8))
@@ -30,7 +28,7 @@ coleccion = Poly3DCollection(
 )
 ax.add_collection3d(coleccion)
 
-# nodos (opcional)
+# nodos
 ax.scatter(nodos_codo[:, 0], nodos_codo[:, 1], nodos_codo[:, 2], color="r", s=10)
 
 # límites y proporción (misma escala en los tres ejes)
