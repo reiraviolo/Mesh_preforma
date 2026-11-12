@@ -1,9 +1,9 @@
 """ Codigo que genera la matriz de puntos de un codo """
 
-from funciones import FuncionesGeometria
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from funciones import FuncionesGeometria
 
 D_codo = 200  # diámetro del caño del codo
 R_codo = 300  # radio de curvatura del codo (medido al eje del caño)

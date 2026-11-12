@@ -1,9 +1,9 @@
 """ Codigo que genera la matriz de puntos de una reducción """
 
-from funciones import FuncionesGeometria
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from funciones import FuncionesGeometria
 
 D1_reduccion = 100  # diámetro inicial del caño de la reducción
 D2_reduccion = 50   # diámetro final del caño de la reducción
