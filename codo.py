@@ -1,6 +1,8 @@
 """ Codigo que genera la matriz de puntos de un codo """
-import numpy as np
-import matplotlib as plt
+
+from funciones import FuncionesGeometria
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
 D_codo = 200  # diámetro del caño del codo
@@ -8,51 +10,38 @@ R_codo = 300  # radio de curvatura del codo (medido al eje del caño)
 angulo_codo = 90  # ángulo de giro del codo [grados]
 N_divisiones_codo = 25  # divisiones circunferenciales
 
-theta_codo = np.deg2rad(angulo_codo)
-# divisiones a lo largo del codo: igual que en el cilindro, busco elementos
-# aproximadamente cuadrados usando la longitud del arco sobre el eje
-L_arco = R_codo * theta_codo
-N_divisiones_L_codo = int(L_arco // (np.pi * D_codo / N_divisiones_codo))
-# filas de nodos = divisiones + 1 (para que el codo cubra el ángulo completo)
-N_filas_codo = N_divisiones_L_codo + 1
+nodos_codo, elementos_codo = FuncionesGeometria.Codo(D_codo, R_codo, angulo_codo, N_divisiones_codo)
 
-# MATRIZ DE NODOS
-matriz_codo = np.arange(N_divisiones_codo * N_filas_codo).reshape(
-    N_filas_codo, N_divisiones_codo
+# conectividad como enteros y en orden perimetral
+elementos_codo_plot = elementos_codo.astype(int)[:, [0, 1, 3, 2]]
+
+# coordenadas de cada vértice de cada cara: (N_elementos, 4, 3)
+caras_codo = nodos_codo[elementos_codo_plot]
+
+fig = plt.figure(figsize=(8, 8))
+ax = fig.add_subplot(111, projection="3d")
+
+coleccion = Poly3DCollection(
+    caras_codo,
+    facecolors="lightsteelblue",
+    edgecolors="k",
+    linewidths=0.6,
+    alpha=0.9,
 )
+ax.add_collection3d(coleccion)
 
-# ARMO LA MATRIZ DE ELEMENTOS
-# creo la matriz de ceros + una columna por ser cíclica
-buffer_codo = np.zeros((N_filas_codo, N_divisiones_codo + 1))
-# ingreso los valores de la matriz original
-buffer_codo[:, 0:N_divisiones_codo] = matriz_codo
-# ingreso los valores a la última columna del buffer
-buffer_codo[:, N_divisiones_codo] = matriz_codo[:, 0]
+# nodos (opcional)
+ax.scatter(nodos_codo[:, 0], nodos_codo[:, 1], nodos_codo[:, 2], color="r", s=10)
 
-elementos_codo = []
-for i in range(buffer_codo.shape[0] - 1):
-    for j in range(buffer_codo.shape[1] - 1):
-        elemento = buffer_codo[i : i + 2, j : j + 2]
-        elementos_codo.append(elemento.flatten())
-elementos_codo = np.array(elementos_codo)
+# límites y proporción (misma escala en los tres ejes)
+mins = nodos_codo.min(axis=0)
+maxs = nodos_codo.max(axis=0)
+ax.set_xlim(mins[0], maxs[0])
+ax.set_ylim(mins[1], maxs[1])
+ax.set_zlim(mins[2], maxs[2])
+ax.set_box_aspect(maxs - mins)
 
-# Armo la matriz de coordenadas de los nodos
-# El eje del codo arranca en el origen apuntando en +z y gira hacia +x,
-# con centro de curvatura en (R_codo, 0, 0). Así la sección en theta = 0
-# coincide con la base del cilindro (plano z = 0).
-r = D_codo / 2
-buffer_nodos_codo = matriz_codo.flatten()
-nodos_codo = np.zeros((len(buffer_nodos_codo), 3))
-for i in range(len(buffer_nodos_codo)):
-    # ángulo alrededor del caño
-    phi = (buffer_nodos_codo[i] % N_divisiones_codo) * (2 * np.pi / N_divisiones_codo)
-    # ángulo a lo largo del codo
-    theta = (buffer_nodos_codo[i] // N_divisiones_codo) * (theta_codo / N_divisiones_L_codo)
-    # punto sobre el eje del codo
-    centro = np.array([R_codo * (1 - np.cos(theta)), 0, R_codo * np.sin(theta)])
-    # vectores de la sección transversal (perpendiculares a la tangente)
-    e1 = np.array([np.cos(theta), 0, -np.sin(theta)])
-    e2 = np.array([0, 1, 0])
-    nodos_codo[i] = centro + r * np.cos(phi) * e1 + r * np.sin(phi) * e2
-
-#print(nodos_codo)
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.set_zlabel("z")
+plt.show()

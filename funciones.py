@@ -60,3 +60,38 @@ class FuncionesGeometria:
             nodos[i] = [x, y, z]
 
         return nodos, elementos
+
+    @staticmethod
+    def Codo(D_codo, R_codo, angulo_codo, N_divisiones_codo):
+        theta_codo = np.deg2rad(angulo_codo) #paso de grados a radianes
+        L_arco = R_codo * theta_codo
+        N_divisiones_L_codo = max(1, int(L_arco // (np.pi * D_codo / N_divisiones_codo)))
+        N_filas_codo = N_divisiones_L_codo + 1
+
+        matriz_codo = np.arange(N_divisiones_codo * N_filas_codo).reshape(
+            N_filas_codo, N_divisiones_codo
+        )
+
+        buffer_codo = np.zeros((N_filas_codo, N_divisiones_codo + 1))
+        buffer_codo[:, :N_divisiones_codo] = matriz_codo
+        buffer_codo[:, N_divisiones_codo] = matriz_codo[:, 0]
+
+        elementos_codo = []
+        for i in range(buffer_codo.shape[0] - 1):
+            for j in range(buffer_codo.shape[1] - 1):
+                elemento = buffer_codo[i : i + 2, j : j + 2]
+                elementos_codo.append(elemento.flatten())
+        elementos_codo = np.array(elementos_codo, dtype=int)
+
+        buffer_nodos_codo = matriz_codo.flatten()
+        nodos_codo = np.zeros((len(buffer_nodos_codo), 3))
+
+        for i, node_id in enumerate(buffer_nodos_codo):
+            phi = (node_id % N_divisiones_codo) * (2 * np.pi / N_divisiones_codo)
+            theta = (node_id // N_divisiones_codo) * (theta_codo / N_divisiones_L_codo)
+            centro = np.array([R_codo * (1 - np.cos(theta)), 0, R_codo * np.sin(theta)])
+            e1 = np.array([np.cos(theta), 0, -np.sin(theta)])
+            e2 = np.array([0, 1, 0])
+            nodos_codo[i] = centro + (D_codo / 2) * (np.cos(phi) * e1 + np.sin(phi) * e2)
+
+        return nodos_codo, elementos_codo
