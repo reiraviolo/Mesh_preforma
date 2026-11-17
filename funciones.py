@@ -27,9 +27,12 @@ class FuncionesGeometria:
 
     @staticmethod
     def Tube(D_cilindro, L_cilindro, N_divisiones):
-        # Divisiones longitudinales asegurando al menos 1
+        # Segmentos longitudinales (al menos 1), con elementos lo más cuadrados posible.
+        # Hay un anillo más que segmentos, así el último anillo queda en x = L.
         delta = np.pi * D_cilindro / N_divisiones
-        N_divisiones_L = max(1, int(L_cilindro // delta))
+        N_segmentos_L = max(1, int(round(L_cilindro / delta)))
+        N_divisiones_L = N_segmentos_L + 1  # cantidad de anillos de nodos
+        paso_L = L_cilindro / N_segmentos_L
 
         # MATRIZ DE NODOS (IDs)
         matriz = np.arange(N_divisiones * N_divisiones_L).reshape(
@@ -54,7 +57,7 @@ class FuncionesGeometria:
 
         for i, node_id in enumerate(buffer_nodos):
             angulo = (node_id % N_divisiones) * (2 * np.pi / N_divisiones)
-            x = (node_id // N_divisiones) * (L_cilindro / N_divisiones_L)
+            x = (node_id // N_divisiones) * paso_L
             y = (D_cilindro / 2) * np.cos(angulo)
             z = (D_cilindro / 2) * np.sin(angulo)
 
