@@ -54,9 +54,10 @@ class FuncionesGeometria:
 
         for i, node_id in enumerate(buffer_nodos):
             angulo = (node_id % N_divisiones) * (2 * np.pi / N_divisiones)
-            x = (D_cilindro / 2) * np.cos(angulo)
-            y = (D_cilindro / 2) * np.sin(angulo)
-            z = (node_id // N_divisiones) * (L_cilindro / N_divisiones_L)
+            x = (node_id // N_divisiones) * (L_cilindro / N_divisiones_L)
+            y = (D_cilindro / 2) * np.cos(angulo)
+            z = (D_cilindro / 2) * np.sin(angulo)
+
             nodos[i] = [x, y, z]
 
         return nodos, elementos
