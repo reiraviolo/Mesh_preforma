@@ -15,7 +15,7 @@ Idea (ver croquis): las superficies se dividen en bloques estructurados.
 Pasos:  1. Parámetros  2. Curva de intersección  3. Tubo directo (grilla + ventana)
         4. Corona  5. Derivación  6. Control  7. Gráfico
 """
-
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -24,14 +24,39 @@ from collections import Counter
 # =============================================================================
 # 1. PARÁMETROS
 # =============================================================================
-OD_1 = 200  # OD tubo directo
-OD_2 = 200  # OD derivación (condición: OD_2 <= OD_1)
-H_1 = 200  # de entrada a intersección
-H_2 = 200  # de intersección a salida lateral
-H_3 = 200  # de intersección a salida final
-Alpha_2 = 90  # ángulo de la derivación [grados]
+#OD_1 = 200  # OD tubo directo
+#OD_2 = 200  # OD derivación (condición: OD_2 <= OD_1)
+#H_1 = 200  # de entrada a intersección
+#H_2 = 200  # de intersección a salida lateral
+#H_3 = 200  # de intersección a salida final
+#Alpha_2 = 90  # ángulo de la derivación [grados]
 
-N_directo = 100  # divisiones de la boca del directo (se redondea a múltiplo de 4)
+#N_directo = 100  # divisiones de la boca del directo (se redondea a múltiplo de 4)
+def pedir(texto, defecto, tipo=float):
+    """Pregunta por consola; Enter = valor por defecto."""
+    while True:
+        r = input(f"{texto} [{defecto}]: ").strip()
+        if r == "":
+            return defecto
+        try:
+            return tipo(r)
+        except ValueError:
+            print(f"  Valor inválido, se espera {tipo.__name__}")
+
+OD_1 = pedir("OD tubo directo", 200)
+OD_2 = pedir("OD derivación (<= OD_1)", 200)
+while OD_2 > OD_1:
+    print("  OD_2 no puede ser mayor que OD_1")
+    OD_2 = pedir("OD derivación (<= OD_1)", OD_1)
+H_1     = pedir("H_1: entrada a intersección", 200)
+H_2     = pedir("H_2: intersección a salida lateral", 200)
+H_3     = pedir("H_3: intersección a salida final", 200)
+Alpha_2 = pedir("Alpha_2: ángulo de la derivación [grados]", 90)
+
+N_directo = pedir("N_directo: divisiones de la boca del directo", 100, int)
+
+
+#valores pode  defercto
 CAPAS = 1  # capas de elementos entre la ventana y la curva (corona)
 SUAVIZADO = 60  # iteraciones de suavizado: la grilla se deforma para adaptarse a la curva
 DIST_MIN = 1.0  # los nodos del borde de la ventana no se acercan a la curva a menos de DIST_MIN·tamaño

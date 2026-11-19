@@ -1,9 +1,9 @@
 import numpy as np
 from funciones import FuncionesGeometria as f
 
-D_cilindro = 200  # diámetro de cilindro
-L_cilindro = 500  # longitud del cilindro
-N_divisiones = 40
+D_cilindro = 50  # diámetro de cilindro
+L_cilindro = 100  # longitud del cilindro
+N_divisiones = 25
 # estas son las divisiones circunferenciaes que voy a tener en el cilindro
 #N_divisiones_L = int(L_cilindro // (np.pi * D_cilindro / N_divisiones))
 
