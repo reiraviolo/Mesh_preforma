@@ -10,10 +10,11 @@ import numpy as np
 
 
 def _malla_reduccion(OD_1, OD_2, L, N):
-    """Malla estructurada de una reducción, con eje en z, entre OD_1 (z=0) y
-    OD_2 (z=L). Tiene 3 tramos: recto con OD_1 -> cono OD_1 a OD_2 -> recto
-    con OD_2. Devuelve (nodos, elementos, info) con elementos ya en orden
-    perimetral [a, b, c, d]."""
+    """Malla estructurada de una reducción, con eje en X (mismo eje de
+    entrada que tubo.py/codo.py/tee.py), entre OD_1 (x=0) y OD_2 (x=L).
+    Tiene 3 tramos: recto con OD_1 -> cono OD_1 a OD_2 -> recto con OD_2.
+    Devuelve (nodos, elementos, info) con elementos ya en orden perimetral
+    [a, b, c, d]."""
     L_D1 = OD_1 * 0.4
     L_D2 = OD_2 * 0.4
 
@@ -33,17 +34,17 @@ def _malla_reduccion(OD_1, OD_2, L, N):
     n2 = divisiones_tramo(L_cono, (OD_1 + OD_2) / 2)
     n3 = divisiones_tramo(L_D2, OD_2)
 
-    z1 = L_D1
-    z2 = L_D1 + L_cono
-    z_anillos = np.concatenate(
+    x1 = L_D1
+    x2 = L_D1 + L_cono
+    x_anillos = np.concatenate(
         [
-            np.linspace(0, z1, n1 + 1),
-            np.linspace(z1, z2, n2 + 1)[1:],
-            np.linspace(z2, L, n3 + 1)[1:],
+            np.linspace(0, x1, n1 + 1),
+            np.linspace(x1, x2, n2 + 1)[1:],
+            np.linspace(x2, L, n3 + 1)[1:],
         ]
     )
-    D_anillos = np.interp(z_anillos, [0, z1, z2, L], [OD_1, OD_1, OD_2, OD_2])
-    N_filas = len(z_anillos)
+    D_anillos = np.interp(x_anillos, [0, x1, x2, L], [OD_1, OD_1, OD_2, OD_2])
+    N_filas = len(x_anillos)
 
     matriz = np.arange(N * N_filas).reshape(N_filas, N)
     buffer = np.zeros((N_filas, N + 1), dtype=int)
@@ -62,9 +63,9 @@ def _malla_reduccion(OD_1, OD_2, L, N):
         angulo = (node_id % N) * (2 * np.pi / N)
         fila = node_id // N
         D_actual = D_anillos[fila]
-        z = z_anillos[fila]
-        x = (D_actual / 2) * np.cos(angulo)
-        y = (D_actual / 2) * np.sin(angulo)
+        x = x_anillos[fila]
+        y = (D_actual / 2) * np.cos(angulo)
+        z = (D_actual / 2) * np.sin(angulo)
         nodos[i] = [x, y, z]
 
     info = dict(n1=n1, n2=n2, n3=n3, N_filas=N_filas, L_D1=L_D1, L_cono=L_cono, L_D2=L_D2)

@@ -12,8 +12,9 @@ import numpy as np
 def _malla_codo(D, R, angulo, N):
     """Malla estructurada de un codo de diámetro D, radio de curvatura R
     (medido al eje del caño) y ángulo de giro `angulo` (grados). El codo
-    arranca en el origen con su eje tangente a x, y gira en el plano x-z.
-    Devuelve (nodos, elementos, N_filas, N_filas_L) con elementos ya en
+    arranca en el origen con su eje tangente a X (mismo eje de entrada que
+    tubo.py/reduccion.py/tee.py), y gira en el plano X-Z alrededor del eje
+    Y. Devuelve (nodos, elementos, N_filas, N_filas_L) con elementos ya en
     orden perimetral [a, b, c, d]."""
     theta = np.deg2rad(angulo)
     L_arco = R * theta
@@ -29,15 +30,23 @@ def _malla_codo(D, R, angulo, N):
     for i in range(buffer.shape[0] - 1):
         for j in range(buffer.shape[1] - 1):
             elementos.append(buffer[i : i + 2, j : j + 2].flatten())
-    elementos = np.array(elementos, dtype=int)[:, [0, 1, 3, 2]]
+    # [2,3,1,0] en vez de [0,1,3,2]: con la nueva parametrizacion (entrada
+    # en +X) ese orden recorre el perimetro al reves que tubo/reduccion/tee;
+    # se verifico con control_malla (orientacion_inconsistente pasaba de
+    # 48 a 0 en la red ensamblada al invertir el orden).
+    elementos = np.array(elementos, dtype=int)[:, [2, 3, 1, 0]]
 
     ids = matriz.flatten()
     nodos = np.zeros((len(ids), 3))
     for i, node_id in enumerate(ids):
         phi = (node_id % N) * (2 * np.pi / N)
         t = (node_id // N) * (theta / N_filas_L)
-        centro = np.array([R * (1 - np.cos(t)), 0, R * np.sin(t)])
-        e1 = np.array([np.cos(t), 0, -np.sin(t)])
+        # centro(t=0) = origen, con tangente (R,0,0) -> entra por +X
+        centro = np.array([R * np.sin(t), 0, R * (1 - np.cos(t))])
+        # e1/e2: base del circulo de la seccion transversal, perpendicular
+        # a la tangente en cada t (e1 gira junto con la curva en el plano
+        # X-Z, e2 queda fijo en Y, perpendicular al plano de giro)
+        e1 = np.array([-np.sin(t), 0, np.cos(t)])
         e2 = np.array([0, 1, 0])
         nodos[i] = centro + (D / 2) * (np.cos(phi) * e1 + np.sin(phi) * e2)
 
@@ -59,8 +68,9 @@ def generar_malla_codo(OD, R, angulo=90.0, N=40, verbose=True):
     N : int
         Divisiones circunferenciales (por defecto 40).
 
-    El codo arranca en el origen con tangente de entrada en x, y gira en
-    el plano x-z.
+    El codo arranca en el origen con tangente de entrada en Z (verificado
+    numéricamente: el primer tramo de la curva avanza en +z, no en +x), y
+    gira en el plano x-z alrededor del eje Y.
 
     Devuelve
     --------
