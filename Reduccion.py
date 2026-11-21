@@ -1,47 +1,113 @@
-""" Codigo que genera la matriz de puntos de una reducción """
+"""
+reduccion.py — malla estructurada de una reducción (cono) entre dos diámetros.
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+Expone generar_malla_reduccion(...), que a partir de las variables de entrada
+devuelve la malla (nodos, elementos, grupo) y la tabla de divisiones usada.
+No grafica nada: para visualizar el resultado usar graficador.py.
+"""
 
-from funciones import FuncionesGeometria
+import numpy as np
 
-D1_reduccion = 100  # diámetro inicial del caño de la reducción
-D2_reduccion = 50   # diámetro final del caño de la reducción
-L_reduccion = 150  # longitud de la reducción
-N_divisiones_reduccion = 25  # divisiones circunferenciales
 
-nodos_reduccion, elementos_reduccion = FuncionesGeometria.Reduccion(D1_reduccion, D2_reduccion, L_reduccion, N_divisiones_reduccion)
+def _malla_reduccion(OD_1, OD_2, L, N):
+    """Malla estructurada de una reducción, con eje en z, entre OD_1 (z=0) y
+    OD_2 (z=L). Tiene 3 tramos: recto con OD_1 -> cono OD_1 a OD_2 -> recto
+    con OD_2. Devuelve (nodos, elementos, info) con elementos ya en orden
+    perimetral [a, b, c, d]."""
+    L_D1 = OD_1 * 0.4
+    L_D2 = OD_2 * 0.4
 
-# conectividad como enteros y en orden perimetral
-elementos_reduccion_plot = elementos_reduccion.astype(int)[:, [0, 1, 3, 2]]
+    # Si los tramos rectos no entran, los achico para que ocupen como
+    # máximo la mitad del largo total.
+    if L_D1 + L_D2 > 0.5 * L:
+        factor = 0.5 * L / (L_D1 + L_D2)
+        L_D1 *= factor
+        L_D2 *= factor
+    L_cono = L - L_D1 - L_D2
 
-# coordenadas de cada vértice de cada cara: (N_elementos, 4, 3)
-caras_reduccion = nodos_reduccion[elementos_reduccion_plot]
+    def divisiones_tramo(largo, D):
+        delta = np.pi * D / N
+        return max(1, int(largo // delta))
 
-fig = plt.figure(figsize=(8, 8))
-ax = fig.add_subplot(111, projection="3d")
+    n1 = divisiones_tramo(L_D1, OD_1)
+    n2 = divisiones_tramo(L_cono, (OD_1 + OD_2) / 2)
+    n3 = divisiones_tramo(L_D2, OD_2)
 
-coleccion = Poly3DCollection(
-    caras_reduccion,
-    facecolors="lightsteelblue",
-    edgecolors="k",
-    linewidths=0.6,
-    alpha=0.9,
-)
-ax.add_collection3d(coleccion)
+    z1 = L_D1
+    z2 = L_D1 + L_cono
+    z_anillos = np.concatenate(
+        [
+            np.linspace(0, z1, n1 + 1),
+            np.linspace(z1, z2, n2 + 1)[1:],
+            np.linspace(z2, L, n3 + 1)[1:],
+        ]
+    )
+    D_anillos = np.interp(z_anillos, [0, z1, z2, L], [OD_1, OD_1, OD_2, OD_2])
+    N_filas = len(z_anillos)
 
-# nodos (opcional)
-ax.scatter(nodos_reduccion[:, 0], nodos_reduccion[:, 1], nodos_reduccion[:, 2], color="r", s=10)
+    matriz = np.arange(N * N_filas).reshape(N_filas, N)
+    buffer = np.zeros((N_filas, N + 1), dtype=int)
+    buffer[:, :N] = matriz
+    buffer[:, N] = matriz[:, 0]
 
-# límites y proporción (misma escala en los tres ejes)
-mins = nodos_reduccion.min(axis=0)
-maxs = nodos_reduccion.max(axis=0)
-ax.set_xlim(mins[0], maxs[0])
-ax.set_ylim(mins[1], maxs[1])
-ax.set_zlim(mins[2], maxs[2])
-ax.set_box_aspect(maxs - mins)
+    elementos = []
+    for i in range(buffer.shape[0] - 1):
+        for j in range(buffer.shape[1] - 1):
+            elementos.append(buffer[i : i + 2, j : j + 2].flatten())
+    elementos = np.array(elementos, dtype=int)[:, [0, 1, 3, 2]]
 
-ax.set_xlabel("x")
-ax.set_ylabel("y")
-ax.set_zlabel("z")
-plt.show()
+    ids = matriz.flatten()
+    nodos = np.zeros((len(ids), 3))
+    for i, node_id in enumerate(ids):
+        angulo = (node_id % N) * (2 * np.pi / N)
+        fila = node_id // N
+        D_actual = D_anillos[fila]
+        z = z_anillos[fila]
+        x = (D_actual / 2) * np.cos(angulo)
+        y = (D_actual / 2) * np.sin(angulo)
+        nodos[i] = [x, y, z]
+
+    info = dict(n1=n1, n2=n2, n3=n3, N_filas=N_filas, L_D1=L_D1, L_cono=L_cono, L_D2=L_D2)
+    return nodos, elementos, info
+
+
+def generar_malla_reduccion(OD_1, OD_2, L, N=40, verbose=True):
+    """
+    Genera la malla de una reducción (cono) entre dos diámetros.
+
+    Parámetros
+    ----------
+    OD_1 : float
+        Diámetro exterior en el extremo de entrada (z=0).
+    OD_2 : float
+        Diámetro exterior en el extremo de salida (z=L).
+    L : float
+        Largo total de la reducción.
+    N : int
+        Divisiones circunferenciales (por defecto 40).
+
+    Devuelve
+    --------
+    dict con:
+        nodos, elementos : arrays de la malla.
+        grupo : array de ceros (un solo grupo, "reducción").
+        divisiones : dict con OD_1, OD_2, L, N, N_filas, y el detalle de los
+        3 tramos (n1/n2/n3 divisiones, L_D1/L_cono/L_D2 largos).
+    """
+    nodos, elementos, info = _malla_reduccion(OD_1, OD_2, L, N)
+    grupo = np.zeros(len(elementos), dtype=int)
+
+    divisiones = dict(OD_1=OD_1, OD_2=OD_2, L=L, N=N, **info)
+
+    if verbose:
+        print(
+            f"Reducción: OD_1={OD_1} -> OD_2={OD_2}, L={L}  ->  {len(nodos)} "
+            f"nodos, {len(elementos)} elementos"
+        )
+
+    return dict(nodos=nodos, elementos=elementos, grupo=grupo, divisiones=divisiones)
+
+
+if __name__ == "__main__":
+    resultado = generar_malla_reduccion(OD_1=100, OD_2=50, L=150, N=25)
+    print(resultado["divisiones"])

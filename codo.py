@@ -1,45 +1,88 @@
-""" Codigo que genera la matriz de puntos de un codo """
+"""
+codo.py — malla estructurada de un codo (curva toroidal) de diámetro constante.
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+Expone generar_malla_codo(...), que a partir de las variables de entrada
+devuelve la malla (nodos, elementos, grupo) y la tabla de divisiones usada.
+No grafica nada: para visualizar el resultado usar graficador.py.
+"""
 
-from funciones import FuncionesGeometria
+import numpy as np
 
-D_codo = 200  # diámetro del caño del codo
-R_codo = 300  # radio de curvatura del codo (medido al eje del caño)
-angulo_codo = 90  # ángulo de giro del codo [grados]
-N_divisiones_codo = 25  # divisiones circunferenciales
 
-nodos_codo, elementos_codo = FuncionesGeometria.Codo(D_codo, R_codo, angulo_codo, N_divisiones_codo)
+def _malla_codo(D, R, angulo, N):
+    """Malla estructurada de un codo de diámetro D, radio de curvatura R
+    (medido al eje del caño) y ángulo de giro `angulo` (grados). El codo
+    arranca en el origen con su eje tangente a x, y gira en el plano x-z.
+    Devuelve (nodos, elementos, N_filas, N_filas_L) con elementos ya en
+    orden perimetral [a, b, c, d]."""
+    theta = np.deg2rad(angulo)
+    L_arco = R * theta
+    N_filas_L = max(1, int(L_arco // (np.pi * D / N)))
+    N_filas = N_filas_L + 1
 
-elementos_codo_plot = elementos_codo.astype(int)[:, [0, 1, 3, 2]]
+    matriz = np.arange(N * N_filas).reshape(N_filas, N)
+    buffer = np.zeros((N_filas, N + 1), dtype=int)
+    buffer[:, :N] = matriz
+    buffer[:, N] = matriz[:, 0]
 
-caras_codo = nodos_codo[elementos_codo_plot]
+    elementos = []
+    for i in range(buffer.shape[0] - 1):
+        for j in range(buffer.shape[1] - 1):
+            elementos.append(buffer[i : i + 2, j : j + 2].flatten())
+    elementos = np.array(elementos, dtype=int)[:, [0, 1, 3, 2]]
 
-fig = plt.figure(figsize=(8, 8))
-ax = fig.add_subplot(111, projection="3d")
+    ids = matriz.flatten()
+    nodos = np.zeros((len(ids), 3))
+    for i, node_id in enumerate(ids):
+        phi = (node_id % N) * (2 * np.pi / N)
+        t = (node_id // N) * (theta / N_filas_L)
+        centro = np.array([R * (1 - np.cos(t)), 0, R * np.sin(t)])
+        e1 = np.array([np.cos(t), 0, -np.sin(t)])
+        e2 = np.array([0, 1, 0])
+        nodos[i] = centro + (D / 2) * (np.cos(phi) * e1 + np.sin(phi) * e2)
 
-coleccion = Poly3DCollection(
-    caras_codo,
-    facecolors="lightsteelblue",
-    edgecolors="k",
-    linewidths=0.6,
-    alpha=0.9,
-)
-ax.add_collection3d(coleccion)
+    return nodos, elementos, N_filas, N_filas_L
 
-# nodos
-ax.scatter(nodos_codo[:, 0], nodos_codo[:, 1], nodos_codo[:, 2], color="r", s=10)
 
-# límites y proporción (misma escala en los tres ejes)
-mins = nodos_codo.min(axis=0)
-maxs = nodos_codo.max(axis=0)
-ax.set_xlim(mins[0], maxs[0])
-ax.set_ylim(mins[1], maxs[1])
-ax.set_zlim(mins[2], maxs[2])
-ax.set_box_aspect(maxs - mins)
+def generar_malla_codo(OD, R, angulo=90.0, N=40, verbose=True):
+    """
+    Genera la malla de un codo (curva de 90° u otro ángulo).
 
-ax.set_xlabel("x")
-ax.set_ylabel("y")
-ax.set_zlabel("z")
-plt.show()
+    Parámetros
+    ----------
+    OD : float
+        Diámetro exterior del caño.
+    R : float
+        Radio de curvatura, medido al eje del caño.
+    angulo : float
+        Ángulo de giro del codo, en grados (por defecto 90).
+    N : int
+        Divisiones circunferenciales (por defecto 40).
+
+    El codo arranca en el origen con tangente de entrada en x, y gira en
+    el plano x-z.
+
+    Devuelve
+    --------
+    dict con:
+        nodos, elementos : arrays de la malla.
+        grupo : array de ceros (un solo grupo, "codo").
+        divisiones : dict con OD, R, angulo, N, N_filas, N_filas_L.
+    """
+    nodos, elementos, N_filas, N_filas_L = _malla_codo(OD, R, angulo, N)
+    grupo = np.zeros(len(elementos), dtype=int)
+
+    divisiones = dict(OD=OD, R=R, angulo=angulo, N=N, N_filas=N_filas, N_filas_L=N_filas_L)
+
+    if verbose:
+        print(
+            f"Codo: OD={OD}, R={R}, angulo={angulo}°  ->  {len(nodos)} nodos, "
+            f"{len(elementos)} elementos"
+        )
+
+    return dict(nodos=nodos, elementos=elementos, grupo=grupo, divisiones=divisiones)
+
+
+if __name__ == "__main__":
+    resultado = generar_malla_codo(OD=200, R=300, angulo=90, N=25)
+    print(resultado["divisiones"])
