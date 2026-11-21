@@ -112,10 +112,3 @@ def generar_malla_reduccion(OD_1, OD_2, L, N=40, verbose=True):
 if __name__ == "__main__":
     resultado = generar_malla_reduccion(OD_1=100, OD_2=50, L=150, N=25)
     print(resultado["divisiones"])
-if __name__ == "__main__":
-    D1_reduccion = int(input("Ingrese el diámetro inicial del caño de la reducción: "))  # diámetro inicial del caño de la reducción - prueba(100)
-    D2_reduccion = int(input("Ingrese el diámetro final del caño de la reducción: "))   # diámetro final del caño de la reducción - prueba(50)
-    L_reduccion = int(input("Ingrese la longitud de la reducción: "))  # longitud de la reducción - prueba(150)
-    N_divisiones_reduccion = int(input("Ingrese el número de divisiones circunferenciales: "))  # divisiones circunferenciales - prueba(25)
-
-nodos_reduccion, elementos_reduccion = FuncionesGeometria.Reduccion(D1_reduccion, D2_reduccion, L_reduccion, N_divisiones_reduccion)
