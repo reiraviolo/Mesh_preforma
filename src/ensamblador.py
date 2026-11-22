@@ -255,6 +255,36 @@ def ensamblar(nodos, tramos, N, direccion_inicial=(1.0, 0.0, 0.0), verbose=True)
             es_derivacion = tipo == "Tee" and t["params"].get("D")
             n_tramo = N_rama if es_derivacion else n_actual
 
+            # El diámetro del tramo de derivación de una Tee es siempre OD2 de
+            # la Tee (la malla de la tee termina en un anillo de diámetro OD2:
+            # si el tubo usara otro OD, ese anillo no podría coincidir nodo a
+            # nodo). Se ignora el OD escrito en el tramo y se avisa si difiere.
+            if es_derivacion:
+                OD2_tee = params["OD2"]
+                OD_escrito = t["params"].get("OD")
+                if OD_escrito is None or abs(OD_escrito - OD2_tee) > 1e-9:
+                    if verbose:
+                        print(f"[ensamblador] AVISO: tramo {t['origen']}->{t['destino']} "
+                              f"(derivación de la Tee {actual}): OD={OD_escrito} se "
+                              f"reemplaza por OD2={OD2_tee:g} de la Tee")
+                t = {**t, "params": {**t["params"], "OD": OD2_tee}}
+            elif tipo == "Reduccion":
+                # sale con el diámetro de salida de la reducción (OD2)
+                if abs(t["params"].get("OD", 0) - params["OD2"]) > 1e-9 and verbose:
+                    print(f"[ensamblador] AVISO: tramo {t['origen']}->{t['destino']} "
+                          f"(salida de la Reducción {actual}): OD={t['params'].get('OD')} se "
+                          f"reemplaza por OD2={params['OD2']:g}")
+                t = {**t, "params": {**t["params"], "OD": params["OD2"]}}
+            elif tipo in ("Tee", "Codo") and params.get("OD") is not None:
+                # tramo recto (S de la Tee) o salida de un Codo: el diámetro es el
+                # heredado del tubo que entra al accesorio (el codo es de diámetro
+                # constante), no el escrito en la flecha.
+                if abs(t["params"].get("OD", 0) - params["OD"]) > 1e-9 and verbose:
+                    print(f"[ensamblador] AVISO: tramo {t['origen']}->{t['destino']} "
+                          f"({'directo de la Tee' if tipo == 'Tee' else 'salida del Codo'} {actual}): OD={t['params'].get('OD')} se "
+                          f"reemplaza por el OD heredado {params['OD']:g}")
+                t = {**t, "params": {**t["params"], "OD": params["OD"]}}
+
             # Si TANTO el origen como el destino de este tramo son, cada
             # uno, un Codo/Tee (un accesorio enchufado directo a otro, sin
             # ninguna Reduccion/Libre de por medio), ambos extremos imponen
@@ -291,6 +321,14 @@ def ensamblar(nodos, tramos, N, direccion_inicial=(1.0, 0.0, 0.0), verbose=True)
                         f"diferencia entre sus Giros sea multiplo de {paso:.2f}°, o intercala un "
                         f"tramo con una Reduccion/nodo Libre entre ambos."
                     )
+
+            if nodos[t["destino"]]["tipo"] == "Reduccion":
+                OD1_red = nodos[t["destino"]]["params"]["OD1"]
+                if abs(t["params"].get("OD", 0) - OD1_red) > 1e-9 and verbose:
+                    print(f"[ensamblador] AVISO: tramo {t['origen']}->{t['destino']} "
+                          f"(entrada a la Reducción {t['destino']}): OD={t['params'].get('OD')} se "
+                          f"reemplaza por OD1={OD1_red:g}")
+                t = {**t, "params": {**t["params"], "OD": OD1_red}}
 
             # recorte al inicio del tramo: cuanto ya cubre, en esta punta,
             # el accesorio del que sale ("actual")

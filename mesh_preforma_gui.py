@@ -700,6 +700,18 @@ class App(tk.Tk):
                     grado += 1
         return grado
 
+    def _od_entrante(self, nodo_id):
+        """OD del tramo que entra a nodo_id (None si no hay ninguno)."""
+        texto = self.editor.get("1.0", "end-1c")
+        for linea in texto.splitlines():
+            m = PATRON_TRAMO.match(linea)
+            if m and m.group(3) == nodo_id:
+                params = _parsear_params(m.group(2))
+                od = params.get("OD")
+                if od is not None and od is not True:
+                    return od
+        return None
+
     def _tramo_entrante(self, nodo_id):
         """True si nodo_id es destino de algún tramo (tiene algo entrando).
         Un extremo libre "normal" (el que va quedando al final de cada
@@ -879,10 +891,10 @@ class App(tk.Tk):
             ("H3", "H3:", 200),
             ("Giro", "Giro (°):", 0),
             ("L_recto", "Longitud tramo recto (S):", 1000),
-            ("OD_recto", "Diámetro tramo recto (S):", od_sug),
             ("L_deriv", "Longitud tramo derivación (D):", 1000),
-            ("OD_deriv", "Diámetro tramo derivación (D):", od_sug),
         ]
+        # Diámetros no editables: el tramo recto (S) hereda el diámetro del
+        # tubo que entra a la Tee y el tramo de derivación (D) usa OD2.
         if grado == 0:
             # la Tee es la primerísima pieza de la red: hace falta además
             # el tramo que la alimenta, porque no hay ningún tramo previo
@@ -900,6 +912,9 @@ class App(tk.Tk):
         except ValueError:
             messagebox.showerror("Valor inválido", "Todos los campos deben ser números.")
             return
+
+        v["OD_recto"] = v["OD_in"] if grado == 0 else (self._od_entrante(origen) or od_sug)
+        v["OD_deriv"] = v["OD2"]
 
         usados = set(self._ids_actuales())
         if grado == 0:
@@ -948,8 +963,7 @@ class App(tk.Tk):
             ("Angulo", "Ángulo del codo (°):", 90),
             ("Giro", "Giro (°):", 0),
             ("L_out", "Longitud tramo de salida:", 1000),
-            ("OD_out", "Diámetro tramo de salida:", od_sug),
-        ]
+        ]  # el diámetro de salida no se pide: el codo es de diámetro constante (hereda el de entrada)
         if grado == 0:
             campos = [
                 ("L_in", "Longitud tramo de entrada:", 1000),
@@ -964,6 +978,8 @@ class App(tk.Tk):
         except ValueError:
             messagebox.showerror("Valor inválido", "Todos los campos deben ser números.")
             return
+
+        v["OD_out"] = v["OD_in"] if grado == 0 else (self._od_entrante(origen) or od_sug)
 
         usados = set(self._ids_actuales())
         if grado == 0:
