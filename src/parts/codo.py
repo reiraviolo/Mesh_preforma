@@ -68,9 +68,9 @@ def generar_malla_codo(OD, R, angulo=90.0, N=40, verbose=True):
     N : int
         Divisiones circunferenciales (por defecto 40).
 
-    El codo arranca en el origen con tangente de entrada en Z (verificado
-    numéricamente: el primer tramo de la curva avanza en +z, no en +x), y
-    gira en el plano x-z alrededor del eje Y.
+    El codo arranca en el origen con tangente de entrada en +X (el mismo eje
+    de entrada que tubo.py/reduccion.py/tee.py) y gira hacia +Z en el plano
+    x-z, alrededor del eje Y.
 
     Devuelve
     --------

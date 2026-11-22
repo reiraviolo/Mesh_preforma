@@ -79,9 +79,9 @@ def generar_malla_reduccion(OD_1, OD_2, L, N=40, verbose=True):
     Parámetros
     ----------
     OD_1 : float
-        Diámetro exterior en el extremo de entrada (z=0).
+        Diámetro exterior en el extremo de entrada (x=0).
     OD_2 : float
-        Diámetro exterior en el extremo de salida (z=L).
+        Diámetro exterior en el extremo de salida (x=L).
     L : float
         Largo total de la reducción.
     N : int

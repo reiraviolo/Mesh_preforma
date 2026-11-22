@@ -2,18 +2,17 @@
 ensamblador.py — genera la malla real de cada tramo (tubo recto) y de cada
 accesorio (Tee/Codo/Reduccion), ya rotados y trasladados a su posición en
 el espacio global según lo que calculó red.calcular_posiciones(), y las
-junta en una sola lista de piezas lista para graficar.
+junta en una sola lista de piezas (y, con fusionar_piezas, en una malla única).
 
-OJO — alcance de esta versión: cada pieza se genera y posiciona por
-separado; no se fusionan los nodos que coinciden en cada unión en una
-malla única (eso es un paso más, de "unir mallas", parecido a unir_mallas()
-de tee.py pero para N piezas en vez de 2). Acá el objetivo es que la red
-completa se vea bien armada en 3D.
+Flujo: ensamblar() genera y posiciona cada pieza por separado; luego
+fusionar_piezas() las une en una malla única, identificando los nodos que
+coinciden en cada unión y devolviendo además las zonas de soldadura
+(los anillos donde se unieron dos piezas).
 
 Ejes locales de cada pieza: las cuatro entran por +X (verificado corriendo
 cada generador y mirando el resultado), así la sección transversal de
 entrada queda siempre en el mismo plano Y-Z para las cuatro, y acoplan
-bien cuando más adelante se fusionen los nodos en cada unión:
+bien al fusionar los nodos en cada unión:
 
     tubo.py       : eje de entrada local = +X. Sin desvío (sección circular).
     reduccion.py  : eje de entrada local = +X. Sin desvío.

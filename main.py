@@ -7,7 +7,7 @@ una sola y exporta el archivo .malla final.
 Uso:
     uv run python main.py archivo.md [N] [salida.malla]
 
-    archivo.md   : ruta al Mermaid (ver prueba_red.md / Caso_1.md como
+    archivo.md   : ruta al Mermaid (ver ejemplos/Caso_1.md como
                    ejemplo de sintaxis).
     N            : divisiones de perímetro del tronco principal (por
                    defecto 24). En la derivación de cada Tee, tee.py
@@ -73,7 +73,7 @@ def main():
     graficador.graficar_malla(nodos_f, elementos_f, ax=ax, mostrar=False,
                                colores={0: "#ffcf80"})
 
-    # marca en rojo los nodos de soldadura (uniones entre piezas)
+    # marca en magenta los nodos de soldadura (uniones entre piezas)
     graficador.graficar_soldaduras(nodos_f, zonas_soldadura, ax=ax, mostrar=False)
 
     # superpone las lineas de eje/centro de cada tramo sobre la malla

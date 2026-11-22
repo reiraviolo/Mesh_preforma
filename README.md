@@ -93,7 +93,7 @@ Texto plano con las secciones:
 - `ELEMENTOS`: cuadriláteros (los triángulos repiten el último nodo).
 - `SOLDADURAS`: anillos de nodos donde se unen dos piezas.
 
-Además se muestra un gráfico 3D con la malla fusionada, las soldaduras en rojo y los ejes de cada tramo.
+Además se muestra un gráfico 3D con la malla fusionada, las soldaduras en magenta y los ejes de cada tramo.
 
 ## Estructura del proyecto
 

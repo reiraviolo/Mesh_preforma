@@ -1,5 +1,5 @@
 """
-app_gui.py — entorno gráfico de escritorio para armar la red de cañerías:
+mesh_preforma_gui.py — entorno gráfico de escritorio para armar la red de cañerías:
 
   - Editor de texto integrado para escribir/editar el Mermaid, con botones
     de ayuda ("Tramo recto", "Tee", "Codo") que agregan los nodos y tramos
@@ -17,7 +17,7 @@ app_gui.py — entorno gráfico de escritorio para armar la red de cañerías:
   - "Nuevo archivo": limpia el editor para empezar otro caso desde cero.
 
 Uso:
-    uv run python app_gui.py [archivo.md]
+    uv run python mesh_preforma_gui.py [archivo.md]
 
     archivo.md : opcional, un Mermaid para cargar al abrir la ventana. Si
                  no se pasa nada, arranca con una plantilla de ejemplo.
