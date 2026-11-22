@@ -63,9 +63,12 @@ def _parsear_params(texto):
     return params
 
 
-def leer_mermaid(path):
+def parsear_mermaid(texto):
     """
-    Lee un archivo Mermaid y devuelve (nodos, tramos).
+    Parsea el texto de un Mermaid (ya en memoria, no un archivo) y devuelve
+    (nodos, tramos). Es lo que usa leer_mermaid() después de leer el
+    archivo; separado así para poder parsear directo el contenido de un
+    editor de texto (p.ej. la app gráfica) sin pasar por disco.
 
     nodos : dict
         {id: {"tipo": str, "params": dict}}
@@ -75,10 +78,7 @@ def leer_mermaid(path):
     nodos = {}
     tramos = []
 
-    with open(path, "r", encoding="utf-8") as f:
-        lineas = f.readlines()
-
-    for linea in lineas:
+    for linea in texto.splitlines():
         contenido = linea.strip()
         if not contenido:
             continue
@@ -122,6 +122,12 @@ def leer_mermaid(path):
                 print(f"[mermaid_reader] nodo {extremo!r} sin definición propia, asumido Libre")
 
     return nodos, tramos
+
+
+def leer_mermaid(path):
+    """Lee un archivo Mermaid de disco y lo parsea (ver parsear_mermaid)."""
+    with open(path, "r", encoding="utf-8") as f:
+        return parsear_mermaid(f.read())
 
 
 if __name__ == "__main__":

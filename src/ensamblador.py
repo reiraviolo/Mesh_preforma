@@ -53,7 +53,7 @@ def _tangente_codo(params):
     return params["R"] * np.tan(np.deg2rad(params["Angulo"]) / 2)
 
 
-def _pieza_tramo(tramo, pos_origen, dir_tramo, N, recorte_inicio=0.0, recorte_fin=0.0):
+def _pieza_tramo(tramo, pos_origen, dir_tramo, ref_tramo, N, recorte_inicio=0.0, recorte_fin=0.0):
     """Genera el tubo recto de un tramo, ya rotado y trasladado.
 
     recorte_inicio/recorte_fin: cuánto se acorta el tramo en cada punta
@@ -61,7 +61,22 @@ def _pieza_tramo(tramo, pos_origen, dir_tramo, N, recorte_inicio=0.0, recorte_fi
     malla ya cubre esa distancia, así que el tubo no debe superponerse).
     recorte_inicio además desplaza el punto de partida del tubo esa misma
     distancia hacia adelante (el tubo no arranca en pos_origen sino un
-    poco más allá, justo donde termina el accesorio anterior)."""
+    poco más allá, justo donde termina el accesorio anterior).
+
+    ref_tramo: la "fase" (plano de referencia) heredada de la pieza
+    anterior (posiciones[destino]["ref_in"]). Aunque un tubo recto es
+    rotacionalmente simétrico en lo geométrico (cualquier giro de su malla
+    continua representa el mismo tubo), su malla DISCRETA no lo es: los N
+    nodos del perímetro están en ángulos fijos, y para que coincidan
+    exactamente (nodo a nodo, no solo "visualmente cerca") con los de la
+    pieza contigua -imprescindible para que la malla sirva para FEM- hace
+    falta usar la MISMA referencia de fase que esa pieza, no un eje fijo
+    cualquiera. Antes se usaba EJE_NORMAL_LOCAL fijo acá, que solo por
+    casualidad coincide con la fase correcta en el primerísimo tramo (el
+    que sale de la raíz) y en cadenas sin ningún Codo/Tee en el medio; en
+    cuanto hay una pieza con Giro != 0 antes, la fase queda desalineada y
+    el tramo que sigue no suelda del todo con sus vecinos (aristas libres
+    de más, mismo lugar pero sin fusionar)."""
     L = tramo["params"]["L"] - recorte_inicio - recorte_fin
     if L <= 0:
         raise ValueError(
@@ -73,7 +88,7 @@ def _pieza_tramo(tramo, pos_origen, dir_tramo, N, recorte_inicio=0.0, recorte_fi
     pos_efectiva = pos_origen + dir_tramo * recorte_inicio
     r = generar_malla_tubo(OD=OD, L=L, N=N, verbose=False)
     nodos_rot = alinear_pieza(
-        r["nodos"], EJE_ENTRADA_LOCAL, EJE_NORMAL_LOCAL, dir_tramo, EJE_NORMAL_LOCAL
+        r["nodos"], EJE_ENTRADA_LOCAL, EJE_NORMAL_LOCAL, dir_tramo, ref_tramo
     )
     nodos_final = nodos_rot + pos_efectiva
     return dict(nodos=nodos_final, elementos=r["elementos"], nombre=f"tramo {tramo['origen']}->{tramo['destino']}")
@@ -90,10 +105,14 @@ def _pieza_codo(nodo_id, params, pos, dir_in, ref_in, N):
     return dict(nodos=nodos_final, elementos=r["elementos"], nombre=f"codo {nodo_id}"), None
 
 
-def _pieza_reduccion(nodo_id, params, pos, dir_in, N):
+def _pieza_reduccion(nodo_id, params, pos, dir_in, ref_in, N):
     r = generar_malla_reduccion(OD_1=params["OD1"], OD_2=params["OD2"], L=params["L"], N=N, verbose=False)
+    # misma fase heredada que el tramo recto (ver nota en _pieza_tramo):
+    # la reducción no cambia de dirección, así que su propio ref_in debe
+    # pasar sin tocar a lo que venga después, pero también define la fase
+    # con la que hay que alinearla a lo que viene ANTES.
     nodos_rot = alinear_pieza(
-        r["nodos"], EJE_ENTRADA_LOCAL, EJE_NORMAL_LOCAL, dir_in, EJE_NORMAL_LOCAL
+        r["nodos"], EJE_ENTRADA_LOCAL, EJE_NORMAL_LOCAL, dir_in, ref_in
     )
     nodos_final = nodos_rot + pos
     return dict(nodos=nodos_final, elementos=r["elementos"], nombre=f"reduccion {nodo_id}"), None
@@ -114,6 +133,23 @@ def _pieza_tee(nodo_id, params, pos, dir_in, ref_in, N):
     )
     # "Giro" se mide respecto del plano XY de la pieza anterior (ref_in),
     # no de una horizontal global (ver docstring de red.py).
+    # tee.py puede, en silencio (solo un print), AMPLIAR H_1/H_3 si la corona
+    # de la derivación no entra en el H declarado por el usuario (ver AVISO
+    # en parts/tee.py). Si eso pasa, el tramo recto contiguo -que ensamblador
+    # recorta usando el H1/H3 NOMINAL, el que escribió el usuario- queda
+    # terminando antes (o despues) de donde realmente termina la malla de
+    # la Tee: un desacople de POSICION (no de fase) entre ambas piezas que
+    # rompe la coincidencia exacta de nodos exigida para FEM. En vez de
+    # tolerarlo en silencio, se lo transforma en un error explicito y
+    # accionable: que el usuario suba H_1/H_3 al minimo real.
+    H1_real, H3_real = r["divisiones"]["H_1"], r["divisiones"]["H_3"]
+    if H1_real != params["H1"] or H3_real != params["H3"]:
+        raise ValueError(
+            f"Nodo {nodo_id} (Tee): la corona de la derivacion no entra en "
+            f"H1={params['H1']:g}/H3={params['H3']:g}; para que la malla quede "
+            f"exactamente conforme con los tramos contiguos (requisito de FEM) "
+            f"hace falta declarar H1>={H1_real:g} y H3>={H3_real:g}."
+        )
     eje_desvio = _eje_desvio(ref_in, dir_in, params.get("Giro", 0))
     nodos_rot = alinear_pieza(r["nodos"], EJE_ENTRADA_LOCAL, EJE_NORMAL_LOCAL, dir_in, eje_desvio)
     nodos_final = nodos_rot + pos
@@ -163,6 +199,13 @@ def ensamblar(nodos, tramos, N, direccion_inicial=(1.0, 0.0, 0.0), verbose=True)
         ref_in = posiciones[actual]["ref_in"]
 
         N_rama = n_actual  # por defecto Codo/Reduccion no cambian el N
+        # Fase real (ya rotada "Giro") de TODA la cara de salida de "actual",
+        # si es un Codo/Tee: es una sola pieza rigida, asi que esta misma
+        # fase es la que ve cualquier tramo que salga de aca (tronco o
+        # derivacion da igual, ver nota mas abajo). None si "actual" no
+        # impone ninguna fase propia (Libre, Reduccion: dejan pasar la que
+        # traigan, sin fijar nada).
+        eje_desvio_actual = None
 
         if tipo == "Codo" and dir_in is not None:
             # el codo se ubica en el vertice de la interseccion de los ejes
@@ -172,10 +215,11 @@ def ensamblar(nodos, tramos, N, direccion_inicial=(1.0, 0.0, 0.0), verbose=True)
             T = _tangente_codo(params)
             pieza, _ = _pieza_codo(actual, params, pos - dir_in * T, dir_in, ref_in, n_actual)
             piezas.append(pieza)
+            eje_desvio_actual = _eje_desvio(ref_in, dir_in, params.get("Giro", 0))
         elif tipo == "Reduccion" and dir_in is not None:
             # el punto de inserción de la reduccion es su propio punto de
             # entrada (pos ya es ese punto, sin corrimiento).
-            pieza, _ = _pieza_reduccion(actual, params, pos, dir_in, n_actual)
+            pieza, _ = _pieza_reduccion(actual, params, pos, dir_in, ref_in, n_actual)
             piezas.append(pieza)
         elif tipo == "Tee" and dir_in is not None:
             # igual que la reduccion: pos ya es el punto donde se cruzan
@@ -184,14 +228,70 @@ def ensamblar(nodos, tramos, N, direccion_inicial=(1.0, 0.0, 0.0), verbose=True)
             pieza, N_rama_tee = _pieza_tee(actual, params, pos, dir_in, ref_in, n_actual)
             piezas.append(pieza)
             N_rama = N_rama_tee
+            eje_desvio_actual = _eje_desvio(ref_in, dir_in, params.get("Giro", 0))
             if verbose:
                 print(f"[ensamblador] Tee {actual}: tronco N={n_actual} -> derivacion N_s={N_rama}")
         # tipo == "Libre": no genera pieza propia, solo deja pasar N_in
 
         for t in salientes[actual]:
             dir_tramo = posiciones[t["destino"]]["dir_in"]
+            # Fase con la que hay que alinear ESTE tramo para que coincida
+            # nodo a nodo con la cara de entrada del accesorio al que
+            # llega (ver nota en _pieza_tramo). Para Codo/Tee esa cara de
+            # entrada no usa el "ref_in" tal cual: usa "eje_desvio" (ref_in
+            # ya rotado "Giro" grados), que es lo mismo que usa
+            # _pieza_codo()/_pieza_tee() como normal objetivo de TODA la
+            # pieza (entrada y desvío son una sola rotación rígida, no se
+            # pueden separar). Para Reduccion/Libre no hay Giro que rote
+            # nada, así que el "ref_in" sin modificar es la fase correcta
+            # (coincide con lo que usa _pieza_reduccion()).
+            tipo_destino_fase = nodos[t["destino"]]["tipo"]
+            ref_in_destino = posiciones[t["destino"]]["ref_in"]
+            dir_in_destino = posiciones[t["destino"]]["dir_in"]
+            if tipo_destino_fase in ("Codo", "Tee"):
+                giro_destino = nodos[t["destino"]]["params"].get("Giro", 0)
+                ref_tramo = _eje_desvio(ref_in_destino, dir_in_destino, giro_destino)
+            else:
+                ref_tramo = ref_in_destino
             es_derivacion = tipo == "Tee" and t["params"].get("D")
             n_tramo = N_rama if es_derivacion else n_actual
+
+            # Si TANTO el origen como el destino de este tramo son, cada
+            # uno, un Codo/Tee (un accesorio enchufado directo a otro, sin
+            # ninguna Reduccion/Libre de por medio), ambos extremos imponen
+            # su propia fase (ver eje_desvio_actual / ref_tramo arriba) y
+            # el tramo -recto, con una sola fase uniforme en toda su
+            # longitud- solo puede calzar exacto con los dos a la vez si
+            # esas dos fases forzadas difieren en un múltiplo entero del
+            # paso angular de la malla (360°/n_tramo); si no, no existe
+            # ninguna fase que sirva para ambos lados a la vez y los nodos
+            # quedan desalineados en una de las dos uniones (requisito de
+            # FEM incumplido). Esto no es un bug de signo o de que falte
+            # propagar algo: es geometria -un caño recto no puede "destorcer"
+            # un desfasaje que no es multiplo del paso de grilla- así que se
+            # avisa con un error accionable en vez de fusionar mal en
+            # silencio.
+            if eje_desvio_actual is not None and tipo_destino_fase in ("Codo", "Tee"):
+                paso = 360.0 / n_tramo
+                cos_ang = np.clip(np.dot(eje_desvio_actual, ref_tramo)
+                                   / (np.linalg.norm(eje_desvio_actual) * np.linalg.norm(ref_tramo)), -1.0, 1.0)
+                desfase = np.degrees(np.arccos(cos_ang))
+                # el sentido (signo) no importa para esto, solo que el
+                # valor absoluto sea multiplo de "paso".
+                resto = desfase % paso
+                resto = min(resto, paso - resto)
+                if resto > 0.05:
+                    raise ValueError(
+                        f"Nodo {actual} ({tipo}) -> Nodo {t['destino']} ({tipo_destino_fase}): "
+                        f"un accesorio enchufado directo a otro (sin Reduccion/Libre de por "
+                        f"medio) necesita que la malla calce exacta en AMBAS caras del tramo "
+                        f"recto que los une, pero las fases reales de esas dos caras difieren "
+                        f"{desfase:.2f}°, que no es multiplo de los {paso:.2f}° de paso de la "
+                        f"malla (N={n_tramo}). Para que los nodos coincidan exactos (FEM), "
+                        f"ajusta el 'Giro' de uno de los dos accesorios, o N, de forma que la "
+                        f"diferencia entre sus Giros sea multiplo de {paso:.2f}°, o intercala un "
+                        f"tramo con una Reduccion/nodo Libre entre ambos."
+                    )
 
             # recorte al inicio del tramo: cuanto ya cubre, en esta punta,
             # el accesorio del que sale ("actual")
@@ -216,7 +316,7 @@ def ensamblar(nodos, tramos, N, direccion_inicial=(1.0, 0.0, 0.0), verbose=True)
                 recorte_fin = 0.0
 
             piezas.append(
-                _pieza_tramo(t, pos, dir_tramo, n_tramo, recorte_inicio, recorte_fin)
+                _pieza_tramo(t, pos, dir_tramo, ref_tramo, n_tramo, recorte_inicio, recorte_fin)
             )
             N_in[t["destino"]] = n_tramo
             OD_in[t["destino"]] = t["params"]["OD"]

@@ -141,16 +141,27 @@ def _direccion_salida(tipo_nodo, dir_in, ref_in, params_nodo, params_tramo):
 
     if tipo_nodo == "Tee":
         # Dos tramos de salida posibles: el marcado "S" sigue derecho
-        # (misma direccion y mismo ref que entra), el marcado "D" es la
-        # derivacion, que se desvia "Alpha" grados en el plano que define
-        # "Giro" (mismo esquema que el Codo, pero con Alpha en vez de
-        # Angulo, y midiendo Giro desde el mismo ref_in del tronco).
+        # (misma direccion que entra), el marcado "D" es la derivacion, que
+        # se desvia "Alpha" grados en el plano que define "Giro" (mismo
+        # esquema que el Codo, pero con Alpha en vez de Angulo, y midiendo
+        # Giro desde el mismo ref_in del tronco).
+        #
+        # El "ref" que se propaga en AMBOS casos es el mismo "eje" (ref_in
+        # ya rotado "Giro" grados): aunque el tronco "S" no cambia de
+        # direccion, la pieza de la Tee es UN SOLO cuerpo rigido (tronco +
+        # derivacion generados y rotados juntos en ensamblador._pieza_tee,
+        # con esa misma rotacion determinada por "eje"), asi que la cara de
+        # salida del tronco queda, en los hechos, orientada segun "eje" y
+        # no segun el "ref_in" sin rotar -como el propio "Giro" de la Tee
+        # ya mueve la fase real de esa cara. Propagar el ref_in sin rotar
+        # haria que el tramo recto que sigue (generado con ese ref como
+        # fase) no coincida nodo a nodo con la cara real del tronco.
+        giro = params_nodo.get("Giro", 0)
+        eje = _eje_desvio(ref_in, dir_in, giro)
         if params_tramo.get("S"):
-            return dir_in, ref_in
+            return dir_in, eje
         if params_tramo.get("D"):
             alpha = params_nodo["Alpha"]
-            giro = params_nodo.get("Giro", 0)
-            eje = _eje_desvio(ref_in, dir_in, giro)
             return rotar_eje(dir_in, eje, alpha), eje
         raise ValueError(
             "Tramo saliente de una Tee sin flag 'S' (directo) ni 'D' "
