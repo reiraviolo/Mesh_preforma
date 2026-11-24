@@ -13,7 +13,7 @@ Para no mallar todo, se aprovecha la **simetría**: se malla solo la mitad (y �
 
 ### Geometría
 
-| Elemento | Eje | Radio |
+| Elemento | Eje | Radio | 
 |---|---|---|
 | Caño principal (*run*) | X | `R` |
 | Derivación (*branch*) | Z | `r` (con `r < R`) |
