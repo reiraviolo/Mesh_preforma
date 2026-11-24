@@ -243,6 +243,14 @@ def calcular_posiciones(nodos, tramos, direccion_inicial=(1.0, 0.0, 0.0)):
 
             L = t["params"]["L"]
             destino = t["destino"]
+            # Si el destino ya tiene posición, la red vuelve a un nodo ya
+            # visitado (forma un lazo): sin este control el recorrido no
+            # termina nunca.
+            if destino in resultado:
+                raise ValueError(
+                    f"La red tiene un lazo: el tramo {actual} -> {destino} "
+                    f"vuelve a un nodo ya visitado. La red debe ser un árbol."
+                )
             # posición del siguiente nodo = posición actual + L en esa dirección
             pos_destino = pos_actual + dir_salida * L
             resultado[destino] = {"pos": pos_destino, "dir_in": dir_salida, "ref_in": ref_salida}
