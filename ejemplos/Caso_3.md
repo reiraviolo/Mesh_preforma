@@ -6,6 +6,8 @@ flowchart TD
 4((Libre))
 5["Tee:OD2=100,Alpha=90,H1=200,H2=200,H3=211,Giro=270"]
 6((Libre))
+7((Libre))
+8((Libre))
 
 1 -->|L=1000,OD=100| 2
 2 -->|L=2000,OD=100,S| 3

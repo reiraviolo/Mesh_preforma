@@ -442,7 +442,10 @@ def completar_base_mitad(R1, nodos, quads, borde_orden, H_1, H_3, N_directo, n=N
             e1 = np.roll(p, -1, axis=-2) - p
             e0 = p - np.roll(p, 1, axis=-2)
             cr = (e0[..., 0] * e1[..., 1] - e0[..., 1] * e1[..., 0]) * sg[..., None]
-            seno = cr / (np.linalg.norm(e0, axis=-1) * np.linalg.norm(e1, axis=-1))
+            den = np.linalg.norm(e0, axis=-1) * np.linalg.norm(e1, axis=-1)
+            # esquinas degeneradas (triangulos [a,b,c,c]: arista de largo 0) -> 0/0;
+            # se las ignora (seno=1) para que no contaminen la calidad del elemento
+            seno = np.divide(cr, den, out=np.ones_like(cr), where=den > 1e-300)
             ar = 0.5 * ((p[..., 0, 0] - p[..., 2, 0]) * (p[..., 1, 1] - p[..., 3, 1])
                         - (p[..., 0, 1] - p[..., 2, 1]) * (p[..., 1, 0] - p[..., 3, 0])) * sg
             forma = 4 * ar / (np.linalg.norm(e1, axis=-1) ** 2).sum(axis=-1)

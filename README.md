@@ -31,7 +31,7 @@ Generar mallas preestablecidas para cada componente de cañería y combinarlas e
 
 ## Requisitos e instalación
 
-- Python ≥ 3.14 y [uv](https://docs.astral.sh/uv/)
+- Python ≥ 3.15 y [uv](https://docs.astral.sh/uv/)
 - Dependencias: numpy, matplotlib, ipympl, requests
 
 ```

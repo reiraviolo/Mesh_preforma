@@ -27,6 +27,7 @@ import contextlib
 import io
 import os
 import sys
+
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 

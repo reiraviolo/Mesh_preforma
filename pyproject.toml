@@ -1,7 +1,7 @@
 [project]
 name = "mesh-preforma"
 version = "0.1.0"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
     "ipympl>=0.10.0",
     "matplotlib>=3.11.2",
